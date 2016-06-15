@@ -145,19 +145,19 @@ void Reduce_tile(const SpMat<SpTile<T> >& mat, T* res, int start_x, int start_y,
   MPI_Status status;
   for (int i = 1; i < global_nrank; i++) {
     if (global_myrank == i) {
-      MPI_Send(all_res + i, sizeof(T), MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+      MPI_Send(all_res + i, sizeof(T), MPI_CHAR, 0, 0, GRAPHMAT_COMM);
     }
   }
   for (int i = 1; i < global_nrank; i++) {
     if (global_myrank == 0) {
-      MPI_Recv(all_res + i, sizeof(T), MPI_CHAR, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(all_res + i, sizeof(T), MPI_CHAR, i, 0, GRAPHMAT_COMM, &status);
       T res_tmp = *res;
       op_fp(res_tmp, all_res[i], res, vsp);
     }
   }
 
   // Broadcast to all nodes
-  MPI_Bcast(res, sizeof(T), MPI_CHAR, 0, MPI_COMM_WORLD);
+  MPI_Bcast(res, sizeof(T), MPI_CHAR, 0, GRAPHMAT_COMM);
 }
 
 template <template<typename> class SpSegment, typename T>
@@ -178,19 +178,19 @@ void Reduce_tile(const SpVec<SpSegment<T> >& vec, T* res, int start, int end,
   MPI_Status status;
   for (int i = 1; i < global_nrank; i++) {
     if (global_myrank == i) {
-      MPI_Send(all_res + i, sizeof(T), MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+      MPI_Send(all_res + i, sizeof(T), MPI_CHAR, 0, 0, GRAPHMAT_COMM);
     }
   }
   for (int i = 1; i < global_nrank; i++) {
     if (global_myrank == 0) {
-      MPI_Recv(all_res + i, sizeof(T), MPI_CHAR, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(all_res + i, sizeof(T), MPI_CHAR, i, 0, GRAPHMAT_COMM, &status);
       T tmp_res = *res;
       op_fp(tmp_res, all_res[i], res, vsp);
     }
   }
 
   // Broadcast to all nodes
-  MPI_Bcast(res, sizeof(T), MPI_CHAR, 0, MPI_COMM_WORLD);
+  MPI_Bcast(res, sizeof(T), MPI_CHAR, 0, GRAPHMAT_COMM);
 }
 
 
@@ -211,19 +211,19 @@ void MapReduce_tile(SpVec<SpSegment<VT> > * vec, T* res, int start, int end,
   MPI_Status status;
   for (int i = 1; i < global_nrank; i++) {
     if (global_myrank == i) {
-      MPI_Send(all_res + i, sizeof(T), MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+      MPI_Send(all_res + i, sizeof(T), MPI_CHAR, 0, 0, GRAPHMAT_COMM);
     }
   }
   for (int i = 1; i < global_nrank; i++) {
     if (global_myrank == 0) {
-      MPI_Recv(all_res + i, sizeof(T), MPI_CHAR, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(all_res + i, sizeof(T), MPI_CHAR, i, 0, GRAPHMAT_COMM, &status);
       T tmp_res = *res;
       op_fp(tmp_res, all_res[i], res, vsp);
     }
   }
 
   // Broadcast to all nodes
-  MPI_Bcast(res, sizeof(T), MPI_CHAR, 0, MPI_COMM_WORLD);
+  MPI_Bcast(res, sizeof(T), MPI_CHAR, 0, GRAPHMAT_COMM);
 }
 
 

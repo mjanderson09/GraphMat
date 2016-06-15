@@ -110,29 +110,29 @@ class CSSegment {
   }
 
   void send_tile(int myrank, int dst_rank, int output_rank, std::vector<MPI_Request>* requests) {
-    MPI_Send(&capacity, 1, MPI_INT, dst_rank, 0, MPI_COMM_WORLD);
-    MPI_Send(&num_ints, 1, MPI_INT, dst_rank, 0, MPI_COMM_WORLD);
-    MPI_Send(&nnz, 1, MPI_INT, dst_rank, 0, MPI_COMM_WORLD);
+    MPI_Send(&capacity, 1, MPI_INT, dst_rank, 0, GRAPHMAT_COMM);
+    MPI_Send(&num_ints, 1, MPI_INT, dst_rank, 0, GRAPHMAT_COMM);
+    MPI_Send(&nnz, 1, MPI_INT, dst_rank, 0, GRAPHMAT_COMM);
     MPI_Request r1, r2;
     MPI_Isend(value, capacity * sizeof(T) + num_ints * sizeof(int), MPI_BYTE, dst_rank, 0,
-             MPI_COMM_WORLD, &r1);
+             GRAPHMAT_COMM, &r1);
     requests->push_back(r1);
   }
 
   void recv_tile(int myrank, int src_rank, int output_rank,
                  std::vector<MPI_Request>* requests) {
 
-    MPI_Recv(&capacity, 1, MPI_INT, src_rank, 0, MPI_COMM_WORLD,
+    MPI_Recv(&capacity, 1, MPI_INT, src_rank, 0, GRAPHMAT_COMM,
              MPI_STATUS_IGNORE);
-    MPI_Recv(&num_ints, 1, MPI_INT, src_rank, 0, MPI_COMM_WORLD,
+    MPI_Recv(&num_ints, 1, MPI_INT, src_rank, 0, GRAPHMAT_COMM,
              MPI_STATUS_IGNORE);
     if (isEmpty()) {
       alloc();
     }
-    MPI_Recv(&nnz, 1, MPI_INT, src_rank, 0, MPI_COMM_WORLD,
+    MPI_Recv(&nnz, 1, MPI_INT, src_rank, 0, GRAPHMAT_COMM,
              MPI_STATUS_IGNORE);
     MPI_Request r1, r2;
-    MPI_Irecv(value, capacity * sizeof(T) + num_ints * sizeof(int), MPI_BYTE, src_rank, 0, MPI_COMM_WORLD,
+    MPI_Irecv(value, capacity * sizeof(T) + num_ints * sizeof(int), MPI_BYTE, src_rank, 0, GRAPHMAT_COMM,
              &r1);
     requests->push_back(r1);
   }

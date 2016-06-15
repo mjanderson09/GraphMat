@@ -36,7 +36,7 @@
 #include <string>
 #include "src/edgelist.h"
 #include "src/bitvector.h"
-
+#include "hdfs.h"
 
 template <typename T>
 class segment_props
@@ -353,7 +353,7 @@ class DenseSegment {
   }
 
   void send_tile_metadata(int myrank, int dst_rank, int output_rank, std::vector<MPI_Request>* requests) {
-    MPI_Send(&(properties.nnz), 1, MPI_INT, dst_rank, 0, MPI_COMM_WORLD);
+    MPI_Send(&(properties.nnz), 1, MPI_INT, dst_rank, 0, GRAPHMAT_COMM);
   }
 
   void recv_tile_metadata(int myrank, int src_rank, int output_rank,
@@ -362,7 +362,7 @@ class DenseSegment {
     // if uninitialized
     if(properties.uninitialized)
     {
-      MPI_Recv(&(properties.nnz), 1, MPI_INT, src_rank, 0, MPI_COMM_WORLD,
+      MPI_Recv(&(properties.nnz), 1, MPI_INT, src_rank, 0, GRAPHMAT_COMM,
                MPI_STATUS_IGNORE);
     }
     else
@@ -374,7 +374,7 @@ class DenseSegment {
         new_properties = uninitialized_properties.back();
         uninitialized_properties.pop_back();
       }
-      MPI_Recv(&(new_properties.nnz), 1, MPI_INT, src_rank, 0, MPI_COMM_WORLD,
+      MPI_Recv(&(new_properties.nnz), 1, MPI_INT, src_rank, 0, GRAPHMAT_COMM,
                MPI_STATUS_IGNORE);
       to_be_received_properties.push_back(new_properties);
     }
@@ -382,7 +382,7 @@ class DenseSegment {
 
   void send_tile(int myrank, int dst_rank, int output_rank, std::vector<MPI_Request>* requests) {
     MPI_Request r1;
-    MPI_Isend(properties.value, capacity * sizeof(T) + num_ints * sizeof(int), MPI_BYTE, dst_rank, 0, MPI_COMM_WORLD,
+    MPI_Isend(properties.value, capacity * sizeof(T) + num_ints * sizeof(int), MPI_BYTE, dst_rank, 0, GRAPHMAT_COMM,
                &r1);
     requests->push_back(r1);
   }
@@ -394,7 +394,7 @@ class DenseSegment {
     if(properties.uninitialized)
     {
       MPI_Request r1;
-      MPI_Irecv(properties.value, capacity * sizeof(T) + num_ints * sizeof(int), MPI_BYTE, src_rank, 0, MPI_COMM_WORLD,
+      MPI_Irecv(properties.value, capacity * sizeof(T) + num_ints * sizeof(int), MPI_BYTE, src_rank, 0, GRAPHMAT_COMM,
              &r1);
       requests->push_back(r1);
       properties.uninitialized = false;
@@ -405,7 +405,7 @@ class DenseSegment {
       to_be_received_properties.erase(to_be_received_properties.begin());
       new_properties.alloc(capacity, num_ints);
       MPI_Request r1;
-      MPI_Irecv(new_properties.value, capacity * sizeof(T) + num_ints* sizeof(int), MPI_BYTE, src_rank, 0, MPI_COMM_WORLD,
+      MPI_Irecv(new_properties.value, capacity * sizeof(T) + num_ints* sizeof(int), MPI_BYTE, src_rank, 0, GRAPHMAT_COMM,
              &r1);
       requests->push_back(r1);
       new_properties.uninitialized = false;
@@ -421,7 +421,7 @@ class DenseSegment {
       return;
     }
     MPI_Request r1;
-    MPI_Isend(properties.compressed_data, properties.nnz * sizeof(T) + properties.nnz * sizeof(int), MPI_BYTE, dst_rank, 0, MPI_COMM_WORLD,
+    MPI_Isend(properties.compressed_data, properties.nnz * sizeof(T) + properties.nnz * sizeof(int), MPI_BYTE, dst_rank, 0, GRAPHMAT_COMM,
                &r1);
     requests->push_back(r1);
   }
@@ -438,7 +438,7 @@ class DenseSegment {
         return;
       }
       MPI_Request r1;
-      MPI_Irecv(properties.compressed_data, properties.nnz * sizeof(T) + properties.nnz * sizeof(int), MPI_BYTE, src_rank, 0, MPI_COMM_WORLD,
+      MPI_Irecv(properties.compressed_data, properties.nnz * sizeof(T) + properties.nnz * sizeof(int), MPI_BYTE, src_rank, 0, GRAPHMAT_COMM,
              &r1);
       requests->push_back(r1);
       properties.uninitialized = false;
@@ -454,7 +454,7 @@ class DenseSegment {
       to_be_received_properties.erase(to_be_received_properties.begin());
       new_properties.alloc(capacity, num_ints);
       MPI_Request r1;
-      MPI_Irecv(new_properties.compressed_data, new_properties.nnz * sizeof(T) + new_properties.nnz * sizeof(int), MPI_BYTE, src_rank, 0, MPI_COMM_WORLD,
+      MPI_Irecv(new_properties.compressed_data, new_properties.nnz * sizeof(T) + new_properties.nnz * sizeof(int), MPI_BYTE, src_rank, 0, GRAPHMAT_COMM,
              &r1);
       requests->push_back(r1);
       new_properties.uninitialized = false;
@@ -477,6 +477,56 @@ class DenseSegment {
     }
     fout.close();
   }
+
+  void saveBin(std::string fname, int start_id, int _m)
+  {
+    int nnz = compute_nnz();
+    FILE * f = fopen(fname.c_str(), "wb");
+    fwrite(&_m, sizeof(int), 1, f);
+    fwrite(&nnz, sizeof(int), 1, f);
+    for(int i = 0 ; i < capacity ; i++)
+    {
+      if(get_bitvector(i, properties.bit_vector))
+      {
+        int vid = i + start_id;
+        fwrite(&vid, sizeof(int), 1, f);
+        fwrite(properties.value + i, sizeof(T), 1, f);
+      }
+    }
+    fclose(f);
+    std::cout << "size of T: " << sizeof(T) << std::endl;
+  }
+
+  void saveBinHdfs(std::string fname, int start_id, int _m)
+  {
+    hdfsFS handle = hdfsConnect("default", 0);
+    hdfsFile f = hdfsOpenFile(handle, fname.c_str(), O_WRONLY | O_CREAT, 0, 0, 0);
+    assert(f);
+
+    int nnz = compute_nnz();
+    char * buf = (char*)_mm_malloc(2 * sizeof(int) + nnz * (sizeof(int) + sizeof(T)), 64);
+    int * _buf1 = (int*) buf;
+    int * _buf2 = (int*) buf + 2 * sizeof(int);
+    T * _buf3 = (T*) (buf + 2 * sizeof(int) + nnz * sizeof(int));
+    _buf1[0] = _m;
+    _buf1[1] = nnz;
+    int cnt = 0;
+    for(int i = 0 ; i < capacity ; i++)
+    {
+      if(get_bitvector(i, properties.bit_vector))
+      {
+        int vid = i + start_id;
+        _buf2[cnt] = vid;
+        _buf3[cnt] = properties.value[i];
+	cnt++;
+      }
+    }
+    hdfsWrite(handle, f, (void*)buf, 2 * sizeof(int) + nnz * (sizeof(int) + sizeof(T)));
+    assert(!hdfsFlush(handle, f));
+    _mm_free(buf);
+  }
+
+
 
   void get_edges(edge_t<T> * edges, unsigned int start_nz)
   {

@@ -83,8 +83,8 @@ class Graph {
     //int *start_src_vertices; //start and end of transpose parts
     //int *end_src_vertices;
 
-    GraphPad::SpMat<GraphPad::DCSCTile<E> > A;
-    GraphPad::SpMat<GraphPad::DCSCTile<E> > AT;
+    GraphPad::SpMat<GraphPad::COOTile<E> > A;
+    GraphPad::SpMat<GraphPad::COOTile<E> > AT;
     GraphPad::SpVec<GraphPad::DenseSegment<V> > vertexproperty;
     GraphPad::SpVec<GraphPad::DenseSegment<bool> > active;
 //    int start_dst_vertices[MAX_PARTS];
@@ -93,6 +93,8 @@ class Graph {
   public:
     void ReadMTX(const char* filename, int grid_size); 
     void ReadMTX_sort(const char* filename, int grid_size, int alloc=1); 
+    void MMapMTX(const char*, std::vector<int>, std::vector<int>, std::vector<int>, int grid_size); 
+    void MMapMTX_sort(const char*, std::vector<int>, std::vector<int>, std::vector<int>, int grid_size, int alloc=1); 
     void ReadMTX_sort(edge_t* edges, int m, int n, int nnz, int grid_size, int alloc=1); 
     void setAllActive();
     void setAllInactive();
@@ -105,6 +107,8 @@ class Graph {
     V getVertexproperty(int v) const;
     bool vertexNodeOwner(const int v) const;
     void saveVertexproperty(std::string fname) const;
+    void saveVertexpropertyBin(std::string fname) const;
+    void saveVertexpropertyBinHdfs(std::string fname) const;
     void reset();
     void shareVertexProperty(Graph<V,E>& g);
     int getBlockIdBySrc(int vertexid) const;
@@ -934,81 +938,18 @@ void partition_and_build_dcsc(int * &row_pointers,
 template<class V, class E>
 void Graph<V,E>::ReadMTX(const char* filename, int grid_size) {
 
-//#define USE_SORTED_INPUT
-// #ifdef USE_SORTED_INPUT
   ReadMTX_sort(filename, grid_size); 
-// #else
-  // ReadMTX_old(filename, grid_size); 
-// #endif
-  
-// //#define CHECK_SORTED_INPUT
-// #ifdef CHECK_SORTED_INPUT
-  // Graph<V> G_sort;
-  // G_sort.ReadMTX_sort(filename, grid_size); 
-  
-  // // Check variables
-  // int grid_m = grid_size;
-  // if(grid_m > mat[0]->m) grid_m = mat[0]->m;
-  // if(grid_m > mat[0]->n) grid_m = mat[0]->n;
-  // for(int i = 0 ; i < grid_m ; i++)
-  // {
-    // printf("Partition mat %d\n", i);
-    // CHECK(mat[i]->m, G_sort.mat[i]->m, "m");
-    // CHECK(mat[i]->n, G_sort.mat[i]->n, "n");
-    // CHECK(mat[i]->nnz, G_sort.mat[i]->nnz, "nnz");
-    // CHECK(mat[i]->nzx, G_sort.mat[i]->nzx, "nzx");
-    // CHECK(mat[i]->lock, G_sort.mat[i]->lock, "lock");
-    // CHECK(mat[i]->isColumn, G_sort.mat[i]->isColumn, "isColumn");
 
-    // // Check arrays
-    // for(int j = 0 ; j < mat[i]->nnz ; j++)
-    // {
-      // CHECK(mat[i]->yindex[j], G_sort.mat[i]->yindex[j], "yindex");
-      // CHECK(mat[i]->value[j], G_sort.mat[i]->value[j], "value");
-    // }
+  return;
+}
 
-    // for(int j = 0 ; j < mat[i]->nzx ; j++)
-    // {
-      // CHECK(mat[i]->xindex[j], G_sort.mat[i]->xindex[j], "xindex");
-      // CHECK(mat[i]->starty[j], G_sort.mat[i]->starty[j], "starty");
-    // }
-  // }
+template<class V, class E>
+void Graph<V,E>::MMapMTX(const char* filename, std::vector<int> ranks, 
+                         std::vector<int> partitions,
+                         std::vector<int> sizes,
+                         int grid_size) {
 
-  // for(int i = 0 ; i < grid_m ; i++)
-  // {
-    // printf("Partition matT %d\n", i);
-    // CHECK(matT[i]->m, G_sort.matT[i]->m, "m");
-    // CHECK(matT[i]->n, G_sort.matT[i]->n, "n");
-    // CHECK(matT[i]->nnz, G_sort.matT[i]->nnz, "nnz");
-    // CHECK(matT[i]->nzx, G_sort.matT[i]->nzx, "nzx");
-    // CHECK(matT[i]->lock, G_sort.matT[i]->lock, "lock");
-    // CHECK(matT[i]->isColumn, G_sort.matT[i]->isColumn, "isColumn");
-
-    // // Check arrays
-    // for(int j = 0 ; j < matT[i]->nnz ; j++)
-    // {
-      // CHECK(matT[i]->yindex[j], G_sort.matT[i]->yindex[j], "yindex");
-      // CHECK(matT[i]->value[j], G_sort.matT[i]->value[j], "value");
-    // }
-
-    // for(int j = 0 ; j < matT[i]->nzx ; j++)
-    // {
-      // CHECK(matT[i]->xindex[j], G_sort.matT[i]->xindex[j], "xindex");
-      // CHECK(matT[i]->starty[j], G_sort.matT[i]->starty[j], "starty");
-    // }
-  // }
-
-  // // Check graph
-  // CHECK(nvertices, G_sort.nvertices, "nvertices");
-  // CHECK(nnz, G_sort.nnz, "nnz");
-  // CHECK(vertexpropertyowner, G_sort.vertexpropertyowner, "vertexpropertyowner");
-  // for(int j = 0 ; j < mat[0]->m ; j++)
-  // {
-    // CHECK(active[j], G_sort.active[j], "active");
-    // CHECK(id[j], G_sort.id[j], "id");
-  // }
-  // std::cout << "Test passed" << std::endl;
-// #endif
+  MMapMTX_sort(filename, ranks, partitions, sizes, grid_size); 
 
   return;
 }
@@ -1055,7 +996,10 @@ int Graph<V,E>::nativeToVertex(int vertex, int nsegments, int len) const
 }
 
 template<class V, class E>
-void Graph<V,E>::ReadMTX_sort(const char* filename, int grid_size, int alloc) {
+void Graph<V,E>::MMapMTX_sort(const char * input_filename,
+                              std::vector<int> ranks,
+                              std::vector<int> partitions,
+                              std::vector<int> sizes, int grid_size, int alloc) {
 
   if (GraphPad::global_nrank == 1) {
     vertexID_randomization = false;
@@ -1067,7 +1011,7 @@ void Graph<V,E>::ReadMTX_sort(const char* filename, int grid_size, int alloc) {
   gettimeofday(&start, 0);
   {
     GraphPad::edgelist_t<E> A_edges;
-    GraphPad::ReadEdgesBin(&A_edges, filename, false);
+    GraphPad::MMapEdgesBin(&A_edges, input_filename, ranks, partitions, sizes);
     tiles_per_dim = GraphPad::global_nrank;
     
     #pragma omp parallel for
@@ -1077,30 +1021,9 @@ void Graph<V,E>::ReadMTX_sort(const char* filename, int grid_size, int alloc) {
       A_edges.edges[i].dst = vertexToNative(A_edges.edges[i].dst, tiles_per_dim, A_edges.m);
     }
 
-    //int (*partition_fn)(int,int,int,int,int);
-    //get_fn_and_tiles(3, GraphPad::global_nrank, &partition_fn, &tiles_per_dim);
     GraphPad::AssignSpMat(A_edges, &A, tiles_per_dim, tiles_per_dim, GraphPad::partition_fn_2d);
     GraphPad::Transpose(A, &AT, tiles_per_dim, tiles_per_dim, GraphPad::partition_fn_2d);
-  /*
-  gettimeofday(&start, 0);
 
-  int m_, n_, nnz_;
-
-  // Insert my code here
-  edge_t * edges;
-  std::cout << "Starting file read of " << filename << std::endl;
-  gettimeofday(&start, NULL);
-  read_from_binary(filename, m_, n_, nnz_, edges);
-  gettimeofday(&end, NULL);
-  std::cout << "Finished file read of " << filename << ", time: " << sec(start,end)  << std::endl;
-
-  ReadMTX_sort(edges, m_, n_, nnz_, grid_size);
-
-  _mm_free((void*)edges);
-  gettimeofday(&end, 0);
-  double time = (end.tv_sec-start.tv_sec)+(end.tv_usec-start.tv_usec)*1e-6;
-  printf("Completed reading A from file in %lf seconds.\n", time);
-*/
     int m_ = A.m;
     assert(A.m == A.n);
     nnz = A.getNNZ();
@@ -1125,257 +1048,57 @@ void Graph<V,E>::ReadMTX_sort(const char* filename, int grid_size, int alloc) {
 
 }
 
+
+
 template<class V, class E>
-void Graph<V,E>::ReadMTX_sort(edge_t* edges, int m_, int n_, int nnz_, int grid_size, int alloc) {
+void Graph<V,E>::ReadMTX_sort(const char* filename, int grid_size, int alloc) {
+
+  if (GraphPad::global_nrank == 1) {
+    vertexID_randomization = false;
+  } else {
+    vertexID_randomization = true;
+  }
 
   struct timeval start, end;
   gettimeofday(&start, 0);
-
-  int * row_pointers_notrans;
-  int * edge_pointers_notrans;
-  int ** vals_notrans;
-  int ** row_inds_notrans;
-  int ** col_ptrs_notrans;
-  int ** col_indices_notrans;
-  int * ncols_notrans;
-  int * nnzs_notrans;
-
-  int * row_pointers_trans;
-  int * edge_pointers_trans;
-  int ** vals_trans;
-  int ** row_inds_trans;
-  int ** col_ptrs_trans;
-  int ** col_indices_trans;
-  int * ncols_trans;
-  int * nnzs_trans;
-  //int m_, n_, nnz_;
-
-
-  // Insert my code here
-/*
-  edge_t * edges;
-  std::cout << "Starting file read" << std::endl;
-  gettimeofday(&start, NULL);
-  read_from_binary(filename, m_, n_, nnz_, edges);
-  gettimeofday(&end, NULL);
-  std::cout << "Finished file read, time: " << sec(start,end)  << std::endl;
-  */
-  if(grid_size > m_) grid_size = m_;
-  if(grid_size > n_) grid_size = n_;
-
-  int round = 512;
-  
-  grid_size = std::min((m_+round-1)/round, grid_size);
-  grid_size = std::min((n_+round-1)/round, grid_size);
-  
-
-  partition_and_build_dcsc(row_pointers_notrans,
-                           edge_pointers_notrans,
-			   vals_notrans,
-			   row_inds_notrans,
-			   col_ptrs_notrans,
-			   col_indices_notrans,
-			   nnzs_notrans,
-			   ncols_notrans,
-			   edges,
-			   m_,
-			   n_,
-			   grid_size,
-			   nnz_,
-			   round);
-			   //1);
-
-  #pragma omp parallel for
-  for(int edge_id = 0 ; edge_id < nnz_ ; edge_id++)
   {
-    int tmp = edges[edge_id].src;
-    edges[edge_id].src = edges[edge_id].dst;
-    edges[edge_id].dst = tmp;
-  }
-
-  partition_and_build_dcsc(row_pointers_trans,
-                           edge_pointers_trans,
-			   vals_trans,
-			   row_inds_trans,
-			   col_ptrs_trans,
-			   col_indices_trans,
-			   nnzs_trans,
-			   ncols_trans,
-			   edges,
-			   n_,
-			   m_,
-			   grid_size,
-			   nnz_,
-			   round);
-
-  nnz = 0;
-  mat = new MatrixDC<E>*[grid_size];
-  matT = new MatrixDC<E>*[grid_size];
-  start_src_vertices = new int[grid_size];
-  end_src_vertices = new int[grid_size];
-  nparts = grid_size;
- 
-  #pragma omp parallel for
-  for (int p = 0; p < grid_size; p++) 
-  {
-    int n_notrans = row_pointers_notrans[p+1] - row_pointers_notrans[p];
-    int n_trans = row_pointers_trans[p+1] - row_pointers_trans[p];
-    mat[p] = new MatrixDC<E>(m_, n_notrans, nnzs_notrans[p], false, 
-                            ncols_notrans[p], col_indices_notrans[p],
-			    col_ptrs_notrans[p], row_inds_notrans[p], 
-			    vals_notrans[p]);
-    matT[p] = new MatrixDC<E>(n_, n_trans, nnzs_trans[p], false, 
-                            ncols_trans[p], col_indices_trans[p],
-			    col_ptrs_trans[p], row_inds_trans[p], 
-			    vals_trans[p]);
-    start_src_vertices[p] = row_pointers_trans[p];
-    end_src_vertices[p] = row_pointers_trans[p+1]-1;
-  }
-
-  delete [] ncols_notrans;
-  delete [] col_indices_notrans;
-  delete [] col_ptrs_notrans;
-  delete [] row_inds_notrans;
-  delete [] vals_notrans;
-
-  delete [] ncols_trans;
-  delete [] col_indices_trans;
-  delete [] col_ptrs_trans;
-  delete [] row_inds_trans;
-  delete [] vals_trans;
-
-  for (int i = 0; i < grid_size; i++) {
-    nnz += mat[i]->nnz;
-  }
-
-  if(alloc) {
-    vertexproperty = new V[m_](); 
-    active = new bool[m_];
-    //id = new unsigned long long int[m_];
-
-    for (int i = 0; i < m_; i++) {
-      active[i] = false;
-      //id[i] = i;
-    }
-  } else {
-    vertexproperty = NULL; 
-    active = NULL;
-    //id = NULL;
-  }
-
-  nvertices = m_;
-  vertexpropertyowner = 1;
-
-  gettimeofday(&end, 0);
-  double time = (end.tv_sec-start.tv_sec)+(end.tv_usec-start.tv_usec)*1e-6;
-  printf("Completed reading A from memory in %lf seconds.\n", time);
-}
-
-
-
-// template<class V, class E>
-// void Graph<V,E>::ReadMTX_old(const char* filename, int grid_size) {
-
-  // //if (grid_size > MAX_PARTS) grid_size = MAX_PARTS;
-
-  // nparts = grid_size;
-  // int grid_m = grid_size; 
-  // //int nthreads = nparts;
-
-  // struct timeval start, end;
-  // //unsigned long long int start = _rdtsc();
-  // gettimeofday(&start, 0);
-  // int **A = NULL;
-  // int *Amg = NULL;
-  // int *Ag = NULL;
-  // int **B = NULL;
-  // int *Bmg = NULL;
-  // int *Bg = NULL;
-
-  // int am;
-  // int an;
-  // int bm, bn;
-  // //an = Read(filename, &A, &Ag, &Amg, &grid_m, &am);
-  // //bn = ReadAndTranspose(filename, &B, &Bg, &Bmg, &grid_m, &bm);
-  // an = ReadBinary(filename, &A, &Ag, &Amg, &grid_m, &am);
-  // bn = ReadAndTransposeBinary(filename, &B, &Bg, &Bmg, &grid_m, &bm);
-
-  // //unsigned long long int now = _rdtsc();
-  // gettimeofday(&end, 0);
-  // //printf("Completed reading A in %lf seconds on Xeon.\n", (now - start) / 2.7 / pow(10, 9));
-  // double time = (end.tv_sec-start.tv_sec)+(end.tv_usec-start.tv_usec)*1e-6;
-  // printf("Completed reading A in %lf seconds.\n", time);
-  // nnz = 0;
-
-  // //now = _rdtsc();
-  // gettimeofday(&start, 0);
-
-  // //MatrixDC* A_DCSC[grid_m];
-  // mat = new MatrixDC<E>*[grid_m];
-  // matT = new MatrixDC<E>*[grid_m];
-  // start_src_vertices = new int[grid_m];
-  // end_src_vertices = new int[grid_m];
- 
-  // //#pragma omp parallel for num_threads(nthreads)
-  // #pragma omp parallel for //num_threads(8)
-  // for (int aid = 0; aid < grid_m; aid++) 
-  // {
-    // //int tid = omp_get_thread_num();
-      // //unsigned long long int begin = _rdtsc();
-      // //if (tid < grid_m) {
-	// //int aid = tid;
-        // //printf("amg aid %d %d\n", Amg[aid], Amg[aid + 1]);
-        // mat[aid] = MatrixDC<E>::ReadDCSXRev(A, Ag, Amg[aid + 1] - Amg[aid], an, aid);
-        // matT[aid] = MatrixDC<E>::ReadDCSXRev(B, Bg, Bmg[aid + 1] - Bmg[aid], bn, aid);
-      // //} 
-      // start_src_vertices[aid] = Bmg[aid];
-      // end_src_vertices[aid] = Bmg[aid+1]-1;
-  // }
-
-
-  // for (int i = 0; i < grid_m; i++) {
-    // nnz += mat[i]->nnz;
+    GraphPad::edgelist_t<E> A_edges;
+    GraphPad::ReadEdgesBin(&A_edges, filename, false);
+    tiles_per_dim = GraphPad::global_nrank;
     
-    // //printf("NNZ[%d] :: A %d At %d \n", i, mat[i]->nnz, matT[i]->nnz);
-    // //mat[i]->printStats();
-    // //matT[i]->printStats();
-    // //printf("Part %d Start %d end %d \n", i, start_src_vertices[i], start_src_vertices[i+1]-1);
-  // }
+    #pragma omp parallel for
+    for(int i = 0 ; i < A_edges.nnz ; i++)
+    {
+      A_edges.edges[i].src = vertexToNative(A_edges.edges[i].src, tiles_per_dim, A_edges.m);
+      A_edges.edges[i].dst = vertexToNative(A_edges.edges[i].dst, tiles_per_dim, A_edges.m);
+    }
 
-  // //unsigned long long int now1 = _rdtsc();
-  // gettimeofday(&end, 0);
-  // time = (end.tv_sec-start.tv_sec)+(end.tv_usec-start.tv_usec)*1e-6;
+    GraphPad::AssignSpMat(A_edges, &A, tiles_per_dim, tiles_per_dim, GraphPad::partition_fn_2d);
+    GraphPad::Transpose(A, &AT, tiles_per_dim, tiles_per_dim, GraphPad::partition_fn_2d);
 
-  // //printf("Reading into %d DCSC blocks completed in %lf seconds on Xeon.\n", grid_m, (now1 - now) / 2.7 / pow(10, 9));
-  // printf("Reading into %d DCSC blocks completed in %lf seconds.\n", grid_m, time);
-  // printf("Matrix size: %d x %d\n", am, an);
-  // printf("Matrix size: %d x %d\n", bm, bn);
+    int m_ = A.m;
+    assert(A.m == A.n);
+    nnz = A.getNNZ();
+    if(alloc) {
+      vertexproperty.AllocatePartitioned(A.m, tiles_per_dim, GraphPad::vector_partition_fn);
+      V *__v = new V;
+      vertexproperty.setAll(*__v);
+      delete __v;
+      active.AllocatePartitioned(A.m, tiles_per_dim, GraphPad::vector_partition_fn);
+      active.setAll(false);
+    } else {
+      //vertexproperty = NULL; 
+      //active = NULL;
+    }
 
-  // _mm_free(A[0]);
-  // _mm_free(A[1]);
-  // _mm_free(A[2]);
-  // _mm_free(A);
-  // _mm_free(Ag);
-  // _mm_free(Amg);
-  // _mm_free(B[0]);
-  // _mm_free(B[1]);
-  // _mm_free(B[2]);
-  // _mm_free(B);
-  // _mm_free(Bg);
-  // _mm_free(Bmg);
-  
-  // vertexproperty = new V[am](); 
-  // active = new bool[am];
-  // id = new unsigned long long int[am];
+    nvertices = m_;
+    vertexpropertyowner = 1;
+  }
+  gettimeofday(&end, 0);
+  std::cout << "Finished GraphPad read + construction, time: " << sec(start,end)  << std::endl;
 
-  // for (int i = 0; i < am; i++) {
-    // active[i] = false;
-    // id[i] = i;
-  // }
-  // nvertices = am;
-  // vertexpropertyowner = 1;
-// }
 
+}
 
 template<class V, class E> 
 void Graph<V,E>::setAllActive() {
@@ -1465,6 +1188,38 @@ void Graph<V,E>::saveVertexproperty(std::string fname) const {
   vertexproperty2.ingestEdgelist(myedges);
   _mm_free(myedges.edges);
   vertexproperty2.save(fname);
+}
+
+
+template<class V, class E> 
+void Graph<V,E>::saveVertexpropertyBin(std::string fname) const {
+  GraphPad::edgelist_t<V> myedges;
+  vertexproperty.get_edges(&myedges);
+  for(unsigned int i = 0 ; i < myedges.nnz ; i++)
+  {
+    myedges.edges[i].src = nativeToVertex(myedges.edges[i].src, tiles_per_dim, nvertices);
+  }
+  GraphPad::SpVec<GraphPad::DenseSegment<V> > vertexproperty2;
+  vertexproperty2.AllocatePartitioned(nvertices, tiles_per_dim, GraphPad::vector_partition_fn);
+  vertexproperty2.ingestEdgelist(myedges);
+  _mm_free(myedges.edges);
+  vertexproperty2.saveBin(fname);
+}
+
+
+template<class V, class E> 
+void Graph<V,E>::saveVertexpropertyBinHdfs(std::string fname) const {
+  GraphPad::edgelist_t<V> myedges;
+  vertexproperty.get_edges(&myedges);
+  for(unsigned int i = 0 ; i < myedges.nnz ; i++)
+  {
+    myedges.edges[i].src = nativeToVertex(myedges.edges[i].src, tiles_per_dim, nvertices);
+  }
+  GraphPad::SpVec<GraphPad::DenseSegment<V> > vertexproperty2;
+  vertexproperty2.AllocatePartitioned(nvertices, tiles_per_dim, GraphPad::vector_partition_fn);
+  vertexproperty2.ingestEdgelist(myedges);
+  _mm_free(myedges.edges);
+  vertexproperty2.saveBinHdfs(fname);
 }
 
 template<class V, class E>

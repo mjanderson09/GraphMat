@@ -33,6 +33,18 @@
 #ifndef SRC_EDGELIST_H_
 #define SRC_EDGELIST_H_
 
+#include <vector>
+#include <sys/mman.h>
+#include <fcntl.h>
+
+inline unsigned int bigEndianToLittleEndian(unsigned int val)
+{
+  return ((val&0x000000FF) << 24) | 
+         ((val&0x0000FF00) << 8) |
+         ((val&0x00FF0000) >> 8)  |
+         ((val&0xFF000000) >> 24);
+}
+
 template <typename T>
 struct edge_t {
   edge_t() {}
@@ -92,8 +104,8 @@ void load_edgelist(const char* dir, int myrank, int nrank,
     fclose(fp);
   }
 
-  MPI_Bcast(&(edgelist->m), 1, MPI_INT, 0, MPI_COMM_WORLD);
-  MPI_Bcast(&(edgelist->n), 1, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&(edgelist->m), 1, MPI_INT, 0, GRAPHMAT_COMM);
+  MPI_Bcast(&(edgelist->n), 1, MPI_INT, 0, GRAPHMAT_COMM);
 
   std::cout << "Got: " << edgelist->nnz << " edges\n" << std::endl;
   
@@ -136,6 +148,62 @@ void load_edgelist(const char* dir, int myrank, int nrank,
     fclose(fp);
   }
 }
+
+template <typename T>
+void load_edgelist_list(const char * input_filename,
+                        std::vector<int> ranks,
+                        std::vector<int> partitions,
+                        std::vector<int> sizes,
+                        int myrank, int nrank,
+                        edgelist_t<T>* edgelist) {
+
+  edgelist->nnz = 0;
+  for(int i = 0 ; i < ranks.size() ; i++)
+  {
+    if(ranks[i] == global_myrank)
+    {
+      edgelist->nnz += sizes[i];
+    }
+  }
+
+  std::cout << " Got " << edgelist->nnz << " edges" << std::endl;
+
+  edgelist->edges = reinterpret_cast<edge_t<T>*>(
+      _mm_malloc((uint64_t)edgelist->nnz * (uint64_t)sizeof(edge_t<T>), 64));
+
+  unsigned long int tmp_nnz = 0;
+  for(int i = 0 ; i < ranks.size() ; i++)
+  {
+    if(ranks[i] == global_myrank)
+    {
+      std::stringstream ss;
+      ss << input_filename;
+      ss << partitions[i];
+      int fd = open(ss.str().c_str(), O_RDONLY);
+      assert(fd != -1);
+      unsigned long int nbytes = sizes[i] * (2 * sizeof(int) + sizeof(T));
+      void * edge_addr = mmap(NULL, nbytes, PROT_READ, MAP_SHARED | MAP_POPULATE, fd, 0);
+      memcpy(edgelist->edges + tmp_nnz, edge_addr, nbytes);
+      munmap(edge_addr, nbytes);
+      tmp_nnz += sizes[i];
+    }
+  }
+
+  int max_vertex = 0;
+  #pragma omp parallel for reduction(max: max_vertex)
+  for(int i = 0 ; i < edgelist->nnz ; i++)
+  {
+    if(edgelist->edges[i].src > max_vertex) max_vertex = edgelist->edges[i].src;
+    if(edgelist->edges[i].dst > max_vertex) max_vertex = edgelist->edges[i].dst;
+  }
+
+  int temp_max_vertex = max_vertex;
+  MPI_Allreduce(&temp_max_vertex, &(edgelist->m), 1, MPI_INT, MPI_MAX, GRAPHMAT_COMM);
+  edgelist->n = edgelist->m;
+  assert(tmp_nnz == edgelist->nnz);
+
+}
+
 
 template <typename T>
 void write_edgelist_txt(const char* dir, int myrank, int nrank, 
@@ -253,7 +321,7 @@ void randomize_edgelist_square(edgelist_t<T>* edgelist, int nrank) {
   }
   delete[] rval;
 
-  MPI_Bcast(mapping, edgelist->m, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(mapping, edgelist->m, MPI_INT, 0, GRAPHMAT_COMM);
 
 #pragma omp parallel for
   for (int i = 0; i < edgelist->nnz; i++) {

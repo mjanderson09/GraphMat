@@ -133,7 +133,7 @@ class SpVec {
       assignment[i] = nodeIds[tile];
     }
     // assignment over
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
 
     // pack into messages
     // calculate message sizes
@@ -148,15 +148,15 @@ class SpVec {
       count[r]++;
     }
     for (int i = 0; i < global_nrank; i++) {
-      MPI_Isend(&count[i], 1, MPI_INT, i, global_myrank, MPI_COMM_WORLD,
+      MPI_Isend(&count[i], 1, MPI_INT, i, global_myrank, GRAPHMAT_COMM,
                 &mpi_req[i]);
     }
     for (int i = 0; i < global_nrank; i++) {
-      MPI_Irecv(&recv_count[i], 1, MPI_INT, i, i, MPI_COMM_WORLD,
+      MPI_Irecv(&recv_count[i], 1, MPI_INT, i, i, GRAPHMAT_COMM,
                 &mpi_req[i + global_nrank]);
     }
     MPI_Waitall(2 * global_nrank, mpi_req, mpi_status);
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
 
     // pack the messages and send
     edge_t<T>** msg = new edge_t<T>* [global_nrank];
@@ -172,7 +172,7 @@ class SpVec {
     }
     for (int i = 0; i < global_nrank; i++) {
       MPI_Isend(msg[i], (uint64_t)sizeof(edge_t<T>) * (uint64_t)count[i],
-                MPI_CHAR, i, global_myrank, MPI_COMM_WORLD, &mpi_req[i]);
+                MPI_CHAR, i, global_myrank, GRAPHMAT_COMM, &mpi_req[i]);
     }
 
     // receive messages into final_edge_list
@@ -188,7 +188,7 @@ class SpVec {
     for (int i = 0; i < global_nrank; i++) {
       MPI_Irecv(&final_edge_list[local_hist[i]],
                 (uint64_t)sizeof(edge_t<T>) * (uint64_t)recv_count[i], MPI_CHAR,
-                i, i, MPI_COMM_WORLD, &mpi_req[i + global_nrank]);
+                i, i, GRAPHMAT_COMM, &mpi_req[i + global_nrank]);
     }
     MPI_Waitall(2 * global_nrank, mpi_req, mpi_status);
 
@@ -212,7 +212,7 @@ class SpVec {
       assert(nodeIds[tile] == global_myrank);
     }
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
 
     // Sort these edges by segment ID
     edge_t<T>* edges = reinterpret_cast<edge_t<T>*>(
@@ -282,7 +282,7 @@ class SpVec {
     _mm_free(start_nzs);
     _mm_free(edges);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
   }
 
   void AllocatePartitioned(int n, int _num_tiles_x,
@@ -358,7 +358,7 @@ class SpVec {
       }
     }
     // global reduction
-    MPI_Allreduce(MPI_IN_PLACE, &total_nnz, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &total_nnz, 1, MPI_INT, MPI_SUM, GRAPHMAT_COMM);
     return total_nnz;
   }
 
@@ -385,20 +385,42 @@ class SpVec {
     }
   }
 
+  void saveBin(std::string fname) const {
+    for(int segment = 0 ; segment < nsegments ; segment++)
+    {
+      if(nodeIds[segment] == global_myrank)
+      {
+        segments[segment].saveBin(fname + std::to_string(segment), start_id[segment], n);
+      }
+    }
+  }
+
+  void saveBinHdfs(std::string fname) const {
+    for(int segment = 0 ; segment < nsegments ; segment++)
+    {
+      if(nodeIds[segment] == global_myrank)
+      {
+        segments[segment].saveBinHdfs(fname + std::to_string(segment), start_id[segment], n);
+      }
+    }
+  }
+
+
+
 
   void printStatus() const {
     if(global_myrank == 0)
     {
       std::cout << "nsegments: " << nsegments << std::endl;
     }
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
     for(int segment = 0 ; segment < nsegments ; segment++)
     {
       if(nodeIds[segment] == global_myrank)
       {
         std::cout << "nodeID, segment, allocated, uninitialized: " << global_myrank << "\t" << segment << "\t" << segments[segment].properties.allocated << "\t" << segments[segment].properties.uninitialized << std::endl;
       }
-      MPI_Barrier(MPI_COMM_WORLD);
+      MPI_Barrier(GRAPHMAT_COMM);
     }
   }
 };

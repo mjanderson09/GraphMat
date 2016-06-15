@@ -468,7 +468,7 @@ void run_graph_program(GraphProgram<T,U,V,E>* gp, Graph<V,E>& g, int iterations=
         
       }
     }
-    MPI_Allreduce(&local_converged, &converged, 1, MPI_INT, MPI_LAND, MPI_COMM_WORLD);
+    MPI_Allreduce(&local_converged, &converged, 1, MPI_INT, MPI_LAND, GraphPad::GRAPHMAT_COMM);
 
     /*#pragma omp parallel num_threads(nthreads) reduction(+:nout) reduction(&:converged) reduction(+:total_search) //schedule(static)
     {

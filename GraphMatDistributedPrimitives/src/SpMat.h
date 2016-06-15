@@ -100,7 +100,7 @@ if(global_myrank == 0)
     assert(ntiles_x > 0);
     assert(ntiles_y > 0);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
 
     // Allocate space for tiles
     tiles = new SpTile* [ntiles_y];
@@ -216,7 +216,7 @@ if(global_myrank == 0)
         }
       }
       positions[global_nrank] = nnz_l;
-      MPI_Barrier(MPI_COMM_WORLD);
+      MPI_Barrier(GRAPHMAT_COMM);
   
       delete [] assignment;
   
@@ -224,15 +224,15 @@ if(global_myrank == 0)
       MPI_Status* mpi_status = new MPI_Status[2 * global_nrank];
   
       for (int i = 0; i < global_nrank; i++) {
-        MPI_Isend(&counts[i], 1, MPI_UNSIGNED_LONG, i, global_myrank, MPI_COMM_WORLD,
+        MPI_Isend(&counts[i], 1, MPI_UNSIGNED_LONG, i, global_myrank, GRAPHMAT_COMM,
                   &mpi_req[i]);
       }
       for (int i = 0; i < global_nrank; i++) {
-        MPI_Irecv(&recv_counts[i], 1, MPI_UNSIGNED_LONG, i, i, MPI_COMM_WORLD,
+        MPI_Irecv(&recv_counts[i], 1, MPI_UNSIGNED_LONG, i, i, GRAPHMAT_COMM,
                   &mpi_req[i + global_nrank]);
       }
       MPI_Waitall(2 * global_nrank, mpi_req, mpi_status);
-      MPI_Barrier(MPI_COMM_WORLD);
+      MPI_Barrier(GRAPHMAT_COMM);
   
   
       recv_positions[0] = 0;
@@ -249,17 +249,17 @@ if(global_myrank == 0)
       MPI_Type_commit(&MPI_EDGE_T);
       for (int i = 0; i < global_nrank; i++) {
         MPI_Isend(edge_list + positions[i], counts[i] ,
-                  MPI_EDGE_T, i, global_myrank, MPI_COMM_WORLD, &mpi_req[i]);
+                  MPI_EDGE_T, i, global_myrank, GRAPHMAT_COMM, &mpi_req[i]);
       }
       received_edges = new edge_t<T>[new_nnz];
   
       for (int i = 0; i < global_nrank; i++) {
         MPI_Irecv(received_edges + recv_positions[i], recv_counts[i] ,
-                  MPI_EDGE_T, i, i, MPI_COMM_WORLD, &mpi_req[i+global_nrank]);
+                  MPI_EDGE_T, i, i, GRAPHMAT_COMM, &mpi_req[i+global_nrank]);
       }
   
       MPI_Waitall(2 * global_nrank, mpi_req, mpi_status);
-      MPI_Barrier(MPI_COMM_WORLD);
+      MPI_Barrier(GRAPHMAT_COMM);
     }
 
     printf("Rank %d: After shuffle %d edges\n", global_myrank, new_nnz);
@@ -325,11 +325,11 @@ if(global_myrank == 0)
     delete [] assignment2;
     delete [] received_edges;
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
   }
 
   void print_tiles(std::string msg, int output_rank) {
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
     {
       if (global_myrank == output_rank) {
         std::cout << "Rank " << global_myrank << "\t" << msg << std::endl;
@@ -341,7 +341,7 @@ if(global_myrank == 0)
         }
       }
     }
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
   }
 
   void Allocate2DPartitioned(int m, int n, int _num_tiles_x, int _num_tiles_y,
@@ -454,7 +454,7 @@ if(global_myrank == 0)
       }
     }
     // global reduction
-    MPI_Allreduce(MPI_IN_PLACE, &total_nnz, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &total_nnz, 1, MPI_INT, MPI_SUM, GRAPHMAT_COMM);
     return total_nnz;
   }
 };

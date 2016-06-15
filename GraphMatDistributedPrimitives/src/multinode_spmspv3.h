@@ -108,7 +108,7 @@ void SpMSpV3_tile(const SpMat<SpTile<Ta> >& grida, const SpVec<Tx>& vecx,
   // Wait_all
   MPI_Waitall(requests.size(), requests.data(), MPI_STATUS_IGNORE);
   requests.clear();
-  //MPI_Barrier(MPI_COMM_WORLD);
+  //MPI_Barrier(GRAPHMAT_COMM);
 
   // Multiply all tiles
   for (int i = start_m; i < end_m; i++) {

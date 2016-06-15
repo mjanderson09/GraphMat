@@ -316,24 +316,24 @@ class DCSCTile {
       std::cout << "Rank: " << myrank << " sending " << name << " to rank "
                 << dst_rank << std::endl;
 
-    MPI_Send(&(nnz), 1, MPI_INT, dst_rank, 0, MPI_COMM_WORLD);
-    MPI_Send(&(m), 1, MPI_INT, dst_rank, 0, MPI_COMM_WORLD);
-    MPI_Send(&(n), 1, MPI_INT, dst_rank, 0, MPI_COMM_WORLD);
-    MPI_Send(&(num_partitions), 1, MPI_INT, dst_rank, 0, MPI_COMM_WORLD);
-    MPI_Send(&(num_cols), 1, MPI_INT, dst_rank, 0, MPI_COMM_WORLD);
+    MPI_Send(&(nnz), 1, MPI_INT, dst_rank, 0, GRAPHMAT_COMM);
+    MPI_Send(&(m), 1, MPI_INT, dst_rank, 0, GRAPHMAT_COMM);
+    MPI_Send(&(n), 1, MPI_INT, dst_rank, 0, GRAPHMAT_COMM);
+    MPI_Send(&(num_partitions), 1, MPI_INT, dst_rank, 0, GRAPHMAT_COMM);
+    MPI_Send(&(num_cols), 1, MPI_INT, dst_rank, 0, GRAPHMAT_COMM);
   }
 
   void recv_tile_metadata(int myrank, int src_rank, int output_rank) {
     if (!isEmpty()) {
       clear();
     }
-    MPI_Recv(&(nnz), 1, MPI_INT, src_rank, 0, MPI_COMM_WORLD,
+    MPI_Recv(&(nnz), 1, MPI_INT, src_rank, 0, GRAPHMAT_COMM,
              MPI_STATUS_IGNORE);
-    MPI_Recv(&(m), 1, MPI_INT, src_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    MPI_Recv(&(n), 1, MPI_INT, src_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    MPI_Recv(&(num_partitions), 1, MPI_INT, src_rank, 0, MPI_COMM_WORLD,
+    MPI_Recv(&(m), 1, MPI_INT, src_rank, 0, GRAPHMAT_COMM, MPI_STATUS_IGNORE);
+    MPI_Recv(&(n), 1, MPI_INT, src_rank, 0, GRAPHMAT_COMM, MPI_STATUS_IGNORE);
+    MPI_Recv(&(num_partitions), 1, MPI_INT, src_rank, 0, GRAPHMAT_COMM,
              MPI_STATUS_IGNORE);
-    MPI_Recv(&(num_cols), 1, MPI_INT, src_rank, 0, MPI_COMM_WORLD,
+    MPI_Recv(&(num_cols), 1, MPI_INT, src_rank, 0, GRAPHMAT_COMM,
              MPI_STATUS_IGNORE);
   }
 
@@ -341,35 +341,35 @@ class DCSCTile {
     if (!isEmpty()) {
       if (block) {
         MPI_Send(row_inds, (uint64_t)(nnz * sizeof(int)), MPI_BYTE, dst_rank, 0,
-                 MPI_COMM_WORLD);
+                 GRAPHMAT_COMM);
         MPI_Send(col_ptrs, num_cols * sizeof(int), MPI_BYTE, dst_rank, 0,
-                 MPI_COMM_WORLD);
+                 GRAPHMAT_COMM);
         MPI_Send(col_indices, num_cols * sizeof(int), MPI_BYTE, dst_rank, 0,
-                 MPI_COMM_WORLD);
+                 GRAPHMAT_COMM);
         MPI_Send(vals, (uint64_t)(nnz * sizeof(T)), MPI_BYTE, dst_rank, 0,
-                 MPI_COMM_WORLD);
+                 GRAPHMAT_COMM);
         MPI_Send(row_pointers, (num_partitions + 1) * sizeof(int), MPI_BYTE,
-                 dst_rank, 0, MPI_COMM_WORLD);
+                 dst_rank, 0, GRAPHMAT_COMM);
         MPI_Send(edge_pointers, (num_partitions + 1) * sizeof(int), MPI_BYTE,
-                 dst_rank, 0, MPI_COMM_WORLD);
+                 dst_rank, 0, GRAPHMAT_COMM);
         MPI_Send(col_starts, (num_partitions + 1) * sizeof(int), MPI_BYTE,
-                 dst_rank, 0, MPI_COMM_WORLD);
+                 dst_rank, 0, GRAPHMAT_COMM);
       } else {
         MPI_Request r1, r2, r3, r4, r5, r6, r7, r8;
         MPI_Isend(row_inds, (uint64_t)(nnz * sizeof(int)), MPI_BYTE, dst_rank,
-                  0, MPI_COMM_WORLD, &r1);
+                  0, GRAPHMAT_COMM, &r1);
         MPI_Isend(col_ptrs, num_cols * sizeof(int), MPI_BYTE, dst_rank, 0,
-                  MPI_COMM_WORLD, &r2);
+                  GRAPHMAT_COMM, &r2);
         MPI_Isend(col_indices, num_cols * sizeof(int), MPI_BYTE, dst_rank, 0,
-                  MPI_COMM_WORLD, &r3);
+                  GRAPHMAT_COMM, &r3);
         MPI_Isend(vals, (uint64_t)(nnz * sizeof(T)), MPI_BYTE, dst_rank, 0,
-                  MPI_COMM_WORLD, &r4);
+                  GRAPHMAT_COMM, &r4);
         MPI_Isend(row_pointers, (num_partitions + 1) * sizeof(int), MPI_BYTE,
-                  dst_rank, 0, MPI_COMM_WORLD, &r5);
+                  dst_rank, 0, GRAPHMAT_COMM, &r5);
         MPI_Isend(edge_pointers, (num_partitions + 1) * sizeof(int), MPI_BYTE,
-                  dst_rank, 0, MPI_COMM_WORLD, &r6);
+                  dst_rank, 0, GRAPHMAT_COMM, &r6);
         MPI_Isend(col_starts, (num_partitions + 1) * sizeof(int), MPI_BYTE,
-                  dst_rank, 0, MPI_COMM_WORLD, &r7);
+                  dst_rank, 0, GRAPHMAT_COMM, &r7);
         (*reqs).push_back(r1);
         (*reqs).push_back(r2);
         (*reqs).push_back(r3);
@@ -401,35 +401,35 @@ class DCSCTile {
 
       if (block) {
         MPI_Recv(row_inds, (uint64_t)(nnz * sizeof(int)), MPI_BYTE, src_rank, 0,
-                 MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                 GRAPHMAT_COMM, MPI_STATUS_IGNORE);
         MPI_Recv(col_ptrs, num_cols * sizeof(int), MPI_BYTE, src_rank, 0,
-                 MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                 GRAPHMAT_COMM, MPI_STATUS_IGNORE);
         MPI_Recv(col_indices, num_cols * sizeof(int), MPI_BYTE, src_rank, 0,
-                 MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                 GRAPHMAT_COMM, MPI_STATUS_IGNORE);
         MPI_Recv(vals, (uint64_t)(nnz * sizeof(T)), MPI_BYTE, src_rank, 0,
-                 MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                 GRAPHMAT_COMM, MPI_STATUS_IGNORE);
         MPI_Recv(row_pointers, (num_partitions + 1) * sizeof(int), MPI_BYTE,
-                 src_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                 src_rank, 0, GRAPHMAT_COMM, MPI_STATUS_IGNORE);
         MPI_Recv(edge_pointers, (num_partitions + 1) * sizeof(int), MPI_BYTE,
-                 src_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                 src_rank, 0, GRAPHMAT_COMM, MPI_STATUS_IGNORE);
         MPI_Recv(col_starts, (num_partitions + 1) * sizeof(int), MPI_BYTE,
-                 src_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                 src_rank, 0, GRAPHMAT_COMM, MPI_STATUS_IGNORE);
       } else {
         MPI_Request r1, r2, r3, r4, r5, r6, r7, r8;
         MPI_Irecv(row_inds, (uint64_t)(nnz * sizeof(int)), MPI_BYTE, src_rank,
-                  0, MPI_COMM_WORLD, &r1);
+                  0, GRAPHMAT_COMM, &r1);
         MPI_Irecv(col_ptrs, num_cols * sizeof(int), MPI_BYTE, src_rank, 0,
-                  MPI_COMM_WORLD, &r2);
+                  GRAPHMAT_COMM, &r2);
         MPI_Irecv(col_indices, num_cols * sizeof(int), MPI_BYTE, src_rank, 0,
-                  MPI_COMM_WORLD, &r3);
+                  GRAPHMAT_COMM, &r3);
         MPI_Irecv(vals, (uint64_t)(nnz * sizeof(T)), MPI_BYTE, src_rank, 0,
-                  MPI_COMM_WORLD, &r4);
+                  GRAPHMAT_COMM, &r4);
         MPI_Irecv(row_pointers, (num_partitions + 1) * sizeof(int), MPI_BYTE,
-                  src_rank, 0, MPI_COMM_WORLD, &r5);
+                  src_rank, 0, GRAPHMAT_COMM, &r5);
         MPI_Irecv(edge_pointers, (num_partitions + 1) * sizeof(int), MPI_BYTE,
-                  src_rank, 0, MPI_COMM_WORLD, &r6);
+                  src_rank, 0, GRAPHMAT_COMM, &r6);
         MPI_Irecv(col_starts, (num_partitions + 1) * sizeof(int), MPI_BYTE,
-                  src_rank, 0, MPI_COMM_WORLD, &r7);
+                  src_rank, 0, GRAPHMAT_COMM, &r7);
         (*reqs).push_back(r1);
         (*reqs).push_back(r2);
         (*reqs).push_back(r3);

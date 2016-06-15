@@ -78,9 +78,9 @@ void SpGEMM_tile_outerproduct(const SpMat<ATile<Ta> >& grida,
 
   MPI_Pcontrol(1, "spgemm");
 
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(GRAPHMAT_COMM);
   start = MPI_Wtime();
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(GRAPHMAT_COMM);
 
   // Calculate row_ranks and col_ranks
   std::vector<std::set<int> > c_row_ranks;
@@ -96,9 +96,9 @@ void SpGEMM_tile_outerproduct(const SpMat<ATile<Ta> >& grida,
   double total_time = 0.0;
   uint64_t total_recv_bytes = 0;
   for (int k = start_k; k < end_k; k++) {
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
     compute_tstamp[0 + (k - start_k) * 4] = MPI_Wtime();
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
     if (global_myrank == output_rank) {
       std::cout << "Starting row/col: " << k << std::endl;
     }
@@ -217,7 +217,7 @@ void SpGEMM_tile_outerproduct(const SpMat<ATile<Ta> >& grida,
     double comp_end = MPI_Wtime();
   }
 
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(GRAPHMAT_COMM);
   end = MPI_Wtime();
   MPI_Pcontrol(-1, "spgemm") ;
 
@@ -241,34 +241,34 @@ void SpGEMM_tile_outerproduct(const SpMat<ATile<Ta> >& grida,
   add_counts[global_myrank] = add_flops;
   if (global_myrank != output_rank) {
     MPI_Send(starts + global_myrank, 1, MPI_DOUBLE, output_rank, 0,
-             MPI_COMM_WORLD);
+             GRAPHMAT_COMM);
     MPI_Send(ends + global_myrank, 1, MPI_DOUBLE, output_rank, 0,
-             MPI_COMM_WORLD);
+             GRAPHMAT_COMM);
     MPI_Send(compute_tstamps[global_myrank], (end_k - start_k) * 4, MPI_DOUBLE,
-             output_rank, 0, MPI_COMM_WORLD);
+             output_rank, 0, GRAPHMAT_COMM);
 
     MPI_Send(recv_bytes + global_myrank, 1, MPI_UNSIGNED_LONG, output_rank, 0,
-             MPI_COMM_WORLD);
+             GRAPHMAT_COMM);
     MPI_Send(add_counts + global_myrank, 1, MPI_UNSIGNED_LONG, output_rank, 0,
-             MPI_COMM_WORLD);
+             GRAPHMAT_COMM);
     MPI_Send(mul_counts + global_myrank, 1, MPI_UNSIGNED_LONG, output_rank, 0,
-             MPI_COMM_WORLD);
+             GRAPHMAT_COMM);
   }
   if (global_myrank == output_rank) {
     for (int i = 0; i < global_nrank; i++) {
       if (i != output_rank) {
-        MPI_Recv(starts + i, 1, MPI_DOUBLE, i, 0, MPI_COMM_WORLD,
+        MPI_Recv(starts + i, 1, MPI_DOUBLE, i, 0, GRAPHMAT_COMM,
                  MPI_STATUS_IGNORE);
-        MPI_Recv(ends + i, 1, MPI_DOUBLE, i, 0, MPI_COMM_WORLD,
+        MPI_Recv(ends + i, 1, MPI_DOUBLE, i, 0, GRAPHMAT_COMM,
                  MPI_STATUS_IGNORE);
         MPI_Recv(compute_tstamps[i], (end_k - start_k) * 4, MPI_DOUBLE, i, 0,
-                 MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                 GRAPHMAT_COMM, MPI_STATUS_IGNORE);
 
-        MPI_Recv(recv_bytes + i, 1, MPI_UNSIGNED_LONG, i, 0, MPI_COMM_WORLD,
+        MPI_Recv(recv_bytes + i, 1, MPI_UNSIGNED_LONG, i, 0, GRAPHMAT_COMM,
                  MPI_STATUS_IGNORE);
-        MPI_Recv(add_counts + i, 1, MPI_UNSIGNED_LONG, i, 0, MPI_COMM_WORLD,
+        MPI_Recv(add_counts + i, 1, MPI_UNSIGNED_LONG, i, 0, GRAPHMAT_COMM,
                  MPI_STATUS_IGNORE);
-        MPI_Recv(mul_counts + i, 1, MPI_UNSIGNED_LONG, i, 0, MPI_COMM_WORLD,
+        MPI_Recv(mul_counts + i, 1, MPI_UNSIGNED_LONG, i, 0, GRAPHMAT_COMM,
                  MPI_STATUS_IGNORE);
       }
     }
@@ -294,7 +294,7 @@ void SpGEMM_tile_outerproduct(const SpMat<ATile<Ta> >& grida,
     }
   }
 
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(GRAPHMAT_COMM);
 }
 
 template <template <typename> class ATile, template <typename> class BTile,
@@ -312,7 +312,7 @@ void SpGEMM_tile_innerproduct(const SpMat<ATile<Ta> >& grida,
   double addtime = 0.0;
   double istart, iend;
 
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(GRAPHMAT_COMM);
   double start = MPI_Wtime();
 
   // Get row ranks and column ranks
@@ -327,11 +327,11 @@ void SpGEMM_tile_innerproduct(const SpMat<ATile<Ta> >& grida,
 
   // For each row/column, broadcast across columns/rows, then multiply and add
   for (int j = start_n; j < end_n; j++) {
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
     if (global_myrank == output_rank) {
       std::cout << "Starting B col: " << j << std::endl;
     }
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
     double comm_start = MPI_Wtime();
     std::vector<MPI_Request> requests;
 
@@ -362,7 +362,7 @@ void SpGEMM_tile_innerproduct(const SpMat<ATile<Ta> >& grida,
 
     double comm_end = MPI_Wtime();
     MPI_Waitall(requests.size(), requests.data(), MPI_STATUS_IGNORE);
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
     double comp_start = MPI_Wtime();
 
     // For each tile in C col j, multiply/add
@@ -375,7 +375,7 @@ void SpGEMM_tile_innerproduct(const SpMat<ATile<Ta> >& grida,
         }
       }
     }
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
     double comp_end = MPI_Wtime();
     double comm_start2 = MPI_Wtime();
 
@@ -437,14 +437,14 @@ void SpGEMM_tile_innerproduct(const SpMat<ATile<Ta> >& grida,
         gridb.tiles[i][j].clear();
       }
     }
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(GRAPHMAT_COMM);
     double comm_end2 = MPI_Wtime();
     total_comm_time += (comm_end - comm_start) + (comm_end2 - comm_start2);
     total_comp_time += comp_end - comp_start;
   }
 
   double end = MPI_Wtime();
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(GRAPHMAT_COMM);
   double end_barrier = MPI_Wtime();
 
   if (global_myrank == output_rank) {

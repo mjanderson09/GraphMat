@@ -73,6 +73,7 @@ double spmspv_reduce_time = 0;
 int global_myrank = 0;
 int global_nrank = 0;
 
+MPI_Comm GRAPHMAT_COMM;
 double COMPRESSION_THRESHOLD;
 
 #include "src/layouts.h"
@@ -99,6 +100,16 @@ void ReadEdgesBin(edgelist_t<T>* edgelist, const char* fname_in, bool randomize)
     randomize_edgelist_square<T>(edgelist, global_nrank);
   }
 }
+
+template <typename T>
+void MMapEdgesBin(edgelist_t<T>* edgelist, 
+                  const char * input_filename,
+                  std::vector<int> ranks,
+                  std::vector<int> partitions, 
+                  std::vector<int> sizes) {
+  load_edgelist_list(input_filename, ranks, partitions, sizes, global_myrank, global_nrank, edgelist);
+}
+
 
 template <typename T>
 void ReadEdgesTxt(edgelist_t<T>* edgelist, const char* fname_in, bool randomize) {
@@ -346,9 +357,15 @@ void UnionReduce(const SpVec<Ta> & v1, const SpVec<Tb> & v2, SpVec<Tc> * v3, voi
   UnionReduce_tile(v1, v2, v3, 0, v1.nsegments, op_fp, vsp);
 }
 
-void GB_Init() {
-  MPI_Comm_rank(MPI_COMM_WORLD, &global_myrank);
-  MPI_Comm_size(MPI_COMM_WORLD, &global_nrank);
+void GB_Init(std::vector<int> exclude_ranks) 
+{
+  MPI_Group grp;
+  MPI_Group newgrp;
+  MPI_Comm_group(MPI_COMM_WORLD, &grp);
+  MPI_Group_excl(grp, exclude_ranks.size(), exclude_ranks.data(), &newgrp);
+  MPI_Comm_create_group(MPI_COMM_WORLD, newgrp, 0, &GRAPHMAT_COMM);
+  MPI_Comm_rank(GRAPHMAT_COMM, &global_myrank);
+  MPI_Comm_size(GRAPHMAT_COMM, &global_nrank);
   COMPRESSION_THRESHOLD = 0.5;
 }
 }  // namespace GraphPad

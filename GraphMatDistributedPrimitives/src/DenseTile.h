@@ -137,19 +137,19 @@ class DenseTile {
   ~DenseTile() {}
 
   void send_tile_metadata(int myrank, int dst_rank, int output_rank) {
-    MPI_Send(&(nnz), 1, MPI_INT, dst_rank, 0, MPI_COMM_WORLD);
-    MPI_Send(&(m), 1, MPI_INT, dst_rank, 0, MPI_COMM_WORLD);
-    MPI_Send(&(n), 1, MPI_INT, dst_rank, 0, MPI_COMM_WORLD);
-    MPI_Send(&(num_ints), 1, MPI_INT, dst_rank, 0, MPI_COMM_WORLD);
+    MPI_Send(&(nnz), 1, MPI_INT, dst_rank, 0, GRAPHMAT_COMM);
+    MPI_Send(&(m), 1, MPI_INT, dst_rank, 0, GRAPHMAT_COMM);
+    MPI_Send(&(n), 1, MPI_INT, dst_rank, 0, GRAPHMAT_COMM);
+    MPI_Send(&(num_ints), 1, MPI_INT, dst_rank, 0, GRAPHMAT_COMM);
   }
 
   void recv_tile_metadata(int myrank, int src_rank, int output_rank) {
     int new_nnz;
-    MPI_Recv(&(new_nnz), 1, MPI_INT, src_rank, 0, MPI_COMM_WORLD,
+    MPI_Recv(&(new_nnz), 1, MPI_INT, src_rank, 0, GRAPHMAT_COMM,
              MPI_STATUS_IGNORE);
-    MPI_Recv(&(m), 1, MPI_INT, src_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    MPI_Recv(&(n), 1, MPI_INT, src_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    MPI_Recv(&(num_ints), 1, MPI_INT, src_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Recv(&(m), 1, MPI_INT, src_rank, 0, GRAPHMAT_COMM, MPI_STATUS_IGNORE);
+    MPI_Recv(&(n), 1, MPI_INT, src_rank, 0, GRAPHMAT_COMM, MPI_STATUS_IGNORE);
+    MPI_Recv(&(num_ints), 1, MPI_INT, src_rank, 0, GRAPHMAT_COMM, MPI_STATUS_IGNORE);
     if (isEmpty()) {
       value = reinterpret_cast<T*>(
           _mm_malloc((uint64_t)(m * n) * (uint64_t)sizeof(T), 64));
@@ -182,19 +182,19 @@ class DenseTile {
       //assert(nzcnt == nnz);
       if (block) {
         //MPI_Send(edges, (uint64_t)nnz * sizeof(edge_t<T>), MPI_BYTE, dst_rank,
-        //         0, MPI_COMM_WORLD);
+        //         0, GRAPHMAT_COMM);
          MPI_Send(value, (uint64_t) (m * n * sizeof(T)), MPI_BYTE,
-         dst_rank, 0, MPI_COMM_WORLD);
+         dst_rank, 0, GRAPHMAT_COMM);
          MPI_Send(bit_vector, (uint64_t) (num_ints) * sizeof(int),
-         MPI_BYTE, dst_rank, 0, MPI_COMM_WORLD);
+         MPI_BYTE, dst_rank, 0, GRAPHMAT_COMM);
       } else {
         MPI_Request r1, r2;
         //MPI_Isend(edges, (uint64_t)nnz * sizeof(edge_t<T>), MPI_BYTE, dst_rank,
-        //          0, MPI_COMM_WORLD, &r1);
+        //          0, GRAPHMAT_COMM, &r1);
          MPI_Isend(value, (uint64_t) (m * n * sizeof(T)), MPI_BYTE,
-         dst_rank, 0, MPI_COMM_WORLD, &r1);
+         dst_rank, 0, GRAPHMAT_COMM, &r1);
          MPI_Isend(bit_vector, (uint64_t) (num_ints) * sizeof(int),
-         MPI_BYTE, dst_rank, 0, MPI_COMM_WORLD, &r2);
+         MPI_BYTE, dst_rank, 0, GRAPHMAT_COMM, &r2);
         (*reqs).push_back(r1);
         (*reqs).push_back(r2);
       }
@@ -209,19 +209,19 @@ class DenseTile {
       edge_t<T>* edges = new edge_t<T>[nnz];
       if (block) {
         //MPI_Recv(edges, (uint64_t)nnz * sizeof(edge_t<T>), MPI_BYTE, src_rank,
-        //         0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        //         0, GRAPHMAT_COMM, MPI_STATUS_IGNORE);
          MPI_Recv(value, (uint64_t) (m * n * sizeof(T)), MPI_BYTE,
-         src_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+         src_rank, 0, GRAPHMAT_COMM, MPI_STATUS_IGNORE);
          MPI_Recv(bit_vector, (uint64_t) (num_ints * sizeof(int)),
-         MPI_BYTE, src_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+         MPI_BYTE, src_rank, 0, GRAPHMAT_COMM, MPI_STATUS_IGNORE);
       } else {
         MPI_Request r1, r2;
         //MPI_Irecv(edges, (uint64_t)nnz * sizeof(edge_t<T>), MPI_BYTE, src_rank,
-        //          0, MPI_COMM_WORLD, &r1);
+        //          0, GRAPHMAT_COMM, &r1);
          MPI_Irecv(value, (uint64_t) (m * n * sizeof(T)), MPI_BYTE,
-         src_rank, 0, MPI_COMM_WORLD, &r1);
+         src_rank, 0, GRAPHMAT_COMM, &r1);
          MPI_Irecv(bit_vector, (uint64_t) (num_ints * sizeof(int)),
-         MPI_BYTE, src_rank, 0, MPI_COMM_WORLD, &r2);
+         MPI_BYTE, src_rank, 0, GRAPHMAT_COMM, &r2);
         (*reqs).push_back(r1);
         (*reqs).push_back(r2);
       }
