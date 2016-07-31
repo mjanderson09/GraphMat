@@ -83,8 +83,8 @@ class Graph {
     //int *start_src_vertices; //start and end of transpose parts
     //int *end_src_vertices;
 
-    GraphPad::SpMat<GraphPad::COOTile<E> > A;
-    GraphPad::SpMat<GraphPad::COOTile<E> > AT;
+    GraphPad::SpMat<GraphPad::DCSCTile<E> > A;
+    GraphPad::SpMat<GraphPad::DCSCTile<E> > AT;
     GraphPad::SpVec<GraphPad::DenseSegment<V> > vertexproperty;
     GraphPad::SpVec<GraphPad::DenseSegment<bool> > active;
 //    int start_dst_vertices[MAX_PARTS];
@@ -1063,7 +1063,7 @@ void Graph<V,E>::MTXFromEdgelist(GraphPad::edgelist_t<E> A_edges, int grid_size,
   if (GraphPad::global_nrank == 1) {
     vertexID_randomization = false;
   } else {
-    vertexID_randomization = false;
+    vertexID_randomization = true;
   }
 
   struct timeval start, end;
@@ -1104,76 +1104,12 @@ void Graph<V,E>::MTXFromEdgelist(GraphPad::edgelist_t<E> A_edges, int grid_size,
   std::cout << "Finished GraphPad read + construction, time: " << sec(start,end)  << std::endl;
 }
 
-
 template<class V, class E>
 void Graph<V,E>::ReadMTX_sort(const char* filename, int grid_size, int alloc) {
-
-  if (GraphPad::global_nrank == 1) {
-    vertexID_randomization = false;
-  } else {
-    vertexID_randomization = false;
-  }
-
-  struct timeval start, end;
-  gettimeofday(&start, 0);
-  {
-    GraphPad::edgelist_t<E> A_edges;
-    GraphPad::ReadEdgesBin(&A_edges, filename, false);
-    tiles_per_dim = GraphPad::global_nrank;
-    
-    #pragma omp parallel for
-    for(int i = 0 ; i < A_edges.nnz ; i++)
-    {
-      A_edges.edges[i].src = vertexToNative(A_edges.edges[i].src, tiles_per_dim, A_edges.m);
-      A_edges.edges[i].dst = vertexToNative(A_edges.edges[i].dst, tiles_per_dim, A_edges.m);
-    }
-
-    //int (*partition_fn)(int,int,int,int,int);
-    //get_fn_and_tiles(3, GraphPad::global_nrank, &partition_fn, &tiles_per_dim);
-    GraphPad::AssignSpMat(A_edges, &A, tiles_per_dim, tiles_per_dim, GraphPad::partition_fn_2d);
-    GraphPad::Transpose(A, &AT, tiles_per_dim, tiles_per_dim, GraphPad::partition_fn_2d);
-  /*
-  gettimeofday(&start, 0);
-
-  int m_, n_, nnz_;
-
-  // Insert my code here
-  edge_t * edges;
-  std::cout << "Starting file read of " << filename << std::endl;
-  gettimeofday(&start, NULL);
-  read_from_binary(filename, m_, n_, nnz_, edges);
-  gettimeofday(&end, NULL);
-  std::cout << "Finished file read of " << filename << ", time: " << sec(start,end)  << std::endl;
-
-  ReadMTX_sort(edges, m_, n_, nnz_, grid_size);
-
-  _mm_free((void*)edges);
-  gettimeofday(&end, 0);
-  double time = (end.tv_sec-start.tv_sec)+(end.tv_usec-start.tv_usec)*1e-6;
-  printf("Completed reading A from file in %lf seconds.\n", time);
-*/
-    int m_ = A.m;
-    assert(A.m == A.n);
-    nnz = A.getNNZ();
-    if(alloc) {
-      vertexproperty.AllocatePartitioned(A.m, tiles_per_dim, GraphPad::vector_partition_fn);
-      V *__v = new V;
-      vertexproperty.setAll(*__v);
-      delete __v;
-      active.AllocatePartitioned(A.m, tiles_per_dim, GraphPad::vector_partition_fn);
-      active.setAll(false);
-    } else {
-      //vertexproperty = NULL; 
-      //active = NULL;
-    }
-
-    nvertices = m_;
-    vertexpropertyowner = 1;
-  }
-  gettimeofday(&end, 0);
-  std::cout << "Finished GraphPad read + construction, time: " << sec(start,end)  << std::endl;
-
-
+  GraphPad::edgelist_t<E> A_edges;
+  GraphPad::ReadEdgesBin(&A_edges, filename, false);
+  MTXFromEdgelist(A_edges, grid_size, alloc);
+  _mm_free(A_edges.edges);
 }
 
 template<class V, class E>
